@@ -530,3 +530,66 @@ select option {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* Analytics & Insights Styles */
+.analytics-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.insights-box {
+    animation: fadeIn 0.5s ease;
+}
+
+.chart-container h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    margin: 0 0 1rem 0;
+    color: #f8fafc;
+}
+
+/* Type Toggle Styles */
+.type-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.type-toggle input[type="radio"] {
+    display: none;
+}
+
+.type-toggle label {
+    flex: 1;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.type-toggle label:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.type-toggle input[type="radio"]:checked + label {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent);
+}
+
+/* Utility Classes */
+.expense-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}

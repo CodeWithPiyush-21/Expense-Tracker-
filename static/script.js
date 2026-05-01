@@ -1,6 +1,7 @@
 let expenses = [];
 let userBudget = 0;
 let categories = [];
+let receiptZoom = 1;
 
 // Analytics Charts
 let monthlyChart = null;
@@ -16,6 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('filterMonth').value = currentMonth;
     
     populateYearFilter();
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (!document.getElementById('receiptModal').classList.contains('hidden')) {
+                closeReceiptModal();
+            }
+        }
+    });
 });
 
 function populateYearFilter() {
@@ -71,7 +81,15 @@ async function loadCategories() {
             { id: 'd1', name: "Food & Dining", color: "#3b82f6" },
             { id: 'd2', name: "Transportation", color: "#10b981" },
             { id: 'd3', name: "Housing & Utilities", color: "#8b5cf6" },
-            { id: 'd4', name: "Salary / Income", color: "#059669" }
+            { id: 'd4', name: "Salary / Income", color: "#059669" },
+            { id: 'd5', name: "Entertainment", color: "#f97316" },
+            { id: 'd6', name: "Shopping & Retail", color: "#ec4899" },
+            { id: 'd7', name: "Healthcare & Medical", color: "#ef4444" },
+            { id: 'd8', name: "Education", color: "#6366f1" },
+            { id: 'd9', name: "Groceries", color: "#22c55e" },
+            { id: 'd10', name: "Gym & Fitness", color: "#14b8a6" },
+            { id: 'd11', name: "Utilities & Internet", color: "#a855f7" },
+            { id: 'd12', name: "Bonus / Awards", color: "#fbbf24" }
         ];
     }
     
@@ -354,7 +372,7 @@ function displayExpenses() {
         
         let receiptHtml = '';
         if (exp.receipt_path) {
-            receiptHtml = `<button onclick="viewReceipt('${exp.receipt_path}')" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:1.2rem; margin-right:10px;" title="View Receipt"><i class='bx bx-image'></i></button>`;
+            receiptHtml = `<button onclick="viewReceipt('${exp.receipt_path}')" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: var(--accent); cursor: pointer; font-size: 1rem; padding: 6px 10px; border-radius: 6px; margin-right: 10px; display: flex; align-items: center; gap: 4px; font-weight: 500;" title="View Receipt"><i class='bx bx-image'></i> <span style="font-size: 0.75rem;">Receipt</span></button>`;
         }
         
         let subHtml = '';
@@ -442,10 +460,38 @@ function updateBudgetUI(spentInView) {
 function viewReceipt(path) {
     document.getElementById('receiptImage').src = path;
     document.getElementById('receiptModal').classList.remove('hidden');
+    receiptZoom = 1;
+    resetZoomImage();
 }
 
 function closeReceiptModal() {
     document.getElementById('receiptModal').classList.add('hidden');
+    document.getElementById('receiptImage').src = '';
+    receiptZoom = 1;
+}
+
+function zoomReceipt(delta) {
+    receiptZoom = Math.max(0.5, Math.min(receiptZoom + delta, 3));
+    updateReceiptZoom();
+}
+
+function resetZoom() {
+    receiptZoom = 1;
+    resetZoomImage();
+}
+
+function updateReceiptZoom() {
+    const img = document.getElementById('receiptImage');
+    if (img) {
+        img.style.transform = `scale(${receiptZoom})`;
+    }
+}
+
+function resetZoomImage() {
+    const img = document.getElementById('receiptImage');
+    if (img) {
+        img.style.transform = 'scale(1)';
+    }
 }
 
 
@@ -585,13 +631,94 @@ async function loadAnalytics() {
         let res = await fetch('/analytics');
         let data = await res.json();
         
-        if(Object.keys(data).length === 0) return;
+        if(Object.keys(data).length === 0) {
+            renderInsights([]);
+            return;
+        }
 
         renderMonthlyChart(data.monthly);
         renderCategoryChart(data.category);
+        renderInsights(data.category);
     } catch (err) {
         console.error("Failed to load analytics", err);
     }
+}
+
+function renderInsights(categoryData) {
+    const insightsBox = document.getElementById('insights');
+    const filteredExpenses = getFilteredExpenses().filter(e => e.type === 'expense');
+    
+    if (!filteredExpenses || filteredExpenses.length === 0) {
+        insightsBox.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">Add transactions to see insights</p>';
+        return;
+    }
+    
+    let totalSpent = filteredExpenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+    let avgTransaction = totalSpent / filteredExpenses.length;
+    
+    // Find top category
+    let categoryTotals = {};
+    filteredExpenses.forEach(e => {
+        categoryTotals[e.category] = (categoryTotals[e.category] || 0) + parseFloat(e.amount);
+    });
+    let topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+    
+    // Calculate daily average
+    let dates = [...new Set(filteredExpenses.map(e => e.date))].length || 1;
+    let dailyAvg = totalSpent / Math.max(dates, 1);
+    
+    // Recurring vs one-time
+    let recurringCount = filteredExpenses.filter(e => e.is_subscription).length;
+    let recurringTotal = filteredExpenses.filter(e => e.is_subscription).reduce((s, e) => s + parseFloat(e.amount), 0);
+    
+    // Trend analysis
+    let trend = '';
+    if (filteredExpenses.length > 5) {
+        const recent = filteredExpenses.slice(0, 5).reduce((s, e) => s + parseFloat(e.amount), 0) / 5;
+        const older = filteredExpenses.slice(5, 10).reduce((s, e) => s + parseFloat(e.amount), 0) / Math.min(5, filteredExpenses.length - 5);
+        if (recent > older) {
+            trend = '<span style="color: var(--danger);">📈 Spending increasing</span>';
+        } else if (recent < older) {
+            trend = '<span style="color: var(--success);">📉 Spending decreasing</span>';
+        } else {
+            trend = '<span style="color: var(--accent);">→ Spending stable</span>';
+        }
+    }
+    
+    insightsBox.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 1rem; border-radius: 10px;">
+                <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;"><i class='bx bx-trending-up'></i> Avg per Transaction</span>
+                <h4 style="color: var(--accent); margin: 0.5rem 0 0 0; font-size: 1.3rem;">₹${avgTransaction.toLocaleString('en-IN', {maximumFractionDigits: 0})}</h4>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1rem; border-radius: 10px;">
+                <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;"><i class='bx bx-calendar'></i> Daily Average</span>
+                <h4 style="color: var(--success); margin: 0.5rem 0 0 0; font-size: 1.3rem;">₹${dailyAvg.toLocaleString('en-IN', {maximumFractionDigits: 0})}</h4>
+            </div>
+            <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 1rem; border-radius: 10px;">
+                <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;"><i class='bx bx-pie-chart-alt'></i> Top Category</span>
+                <h4 style="color: #c4b5fd; margin: 0.5rem 0 0 0; font-size: 1.1rem;">${topCategory ? topCategory[0] : 'N/A'}</h4>
+                <p style="margin: 0.3rem 0 0 0; color: var(--text-muted); font-size: 0.85rem;">₹${topCategory ? topCategory[1].toLocaleString('en-IN', {maximumFractionDigits: 0}) : 0}</p>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 1rem; border-radius: 10px;">
+                <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;"><i class='bx bx-sync'></i> Recurring</span>
+                <h4 style="color: var(--warning); margin: 0.5rem 0 0 0; font-size: 1.3rem;">₹${recurringTotal.toLocaleString('en-IN', {maximumFractionDigits: 0})}</h4>
+                <p style="margin: 0.3rem 0 0 0; color: var(--text-muted); font-size: 0.85rem;">${recurringCount} subscriptions</p>
+            </div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+            <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;"><i class='bx bx-zap'></i> Trend Analysis</span>
+            <div style="margin-top: 0.5rem; font-size: 1rem;">${trend || 'Insufficient data'}</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+            <div style="background: rgba(34, 197, 94, 0.15); border-left: 3px solid var(--success); padding: 0.8rem; border-radius: 6px;">
+                <p style="margin: 0; color: var(--success); font-size: 0.85rem; font-weight: 500;"><i class='bx bx-check-circle'></i> Within Budget</p>
+            </div>
+            <div style="background: rgba(59, 130, 246, 0.15); border-left: 3px solid var(--accent); padding: 0.8rem; border-radius: 6px;">
+                <p style="margin: 0; color: var(--accent); font-size: 0.85rem; font-weight: 500;"><i class='bx bx-info-circle'></i> Tip: Review subscriptions</p>
+            </div>
+        </div>
+    `;
 }
 
 function renderMonthlyChart(data) {
@@ -610,10 +737,31 @@ function renderMonthlyChart(data) {
                 borderColor: '#ef4444',
                 backgroundColor: 'rgba(239, 68, 68, 0.2)',
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointBackgroundColor: '#ef4444',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94a3b8', font: { size: 12 } } }
+            },
+            scales: {
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#94a3b8' }
+                },
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#94a3b8' }
+                }
+            }
+        }
     });
 }
 
@@ -629,22 +777,45 @@ function renderCategoryChart(data) {
         let matched = categories.find(c => c.name === catName);
         bgColors.push(matched ? matched.color : '#64748b');
     });
+    
+    // Calculate percentages
+    let total = Object.values(data).reduce((a, b) => a + b, 0);
+    let labels = Object.keys(data).map((name, idx) => {
+        let percent = ((Object.values(data)[idx] / total) * 100).toFixed(1);
+        return `${name} (${percent}%)`;
+    });
 
     categoryChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: Object.keys(data),
+            labels: labels,
             datasets: [{
                 data: Object.values(data),
                 backgroundColor: bgColors,
-                borderWidth: 0
+                borderColor: '#1e293b',
+                borderWidth: 2
             }]
         },
         options: { 
             responsive: true, 
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'right' }
+                legend: { 
+                    position: 'bottom',
+                    labels: { 
+                        color: '#94a3b8',
+                        font: { size: 11 },
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '₹' + context.parsed.toLocaleString('en-IN', {maximumFractionDigits: 0});
+                        }
+                    }
+                }
             }
         }
     });

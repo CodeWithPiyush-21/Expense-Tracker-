@@ -72,12 +72,11 @@
                     <h2><i class='bx bx-plus-circle' ></i> Add Transaction</h2>
                     
                     <div class="type-toggle" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <label style="flex: 1; cursor: pointer; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--border);">
-                            <input type="radio" name="txType" value="expense" checked onchange="toggleCategories()"> Expense
-                        </label>
-                        <label style="flex: 1; cursor: pointer; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--border);">
-                            <input type="radio" name="txType" value="income" onchange="toggleCategories()"> Income
-                        </label>
+                        <input type="radio" id="txTypeExpense" name="txType" value="expense" checked onchange="toggleCategories()" style="display: none;">
+                        <label for="txTypeExpense" style="flex: 1; cursor: pointer; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; text-align: center; border: 2px solid transparent; transition: all 0.3s ease; font-weight: 500;"><i class='bx bx-trending-down'></i> Expense</label>
+                        
+                        <input type="radio" id="txTypeIncome" name="txType" value="income" onchange="toggleCategories()" style="display: none;">
+                        <label for="txTypeIncome" style="flex: 1; cursor: pointer; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; text-align: center; border: 2px solid transparent; transition: all 0.3s ease; font-weight: 500;"><i class='bx bx-trending-up'></i> Income</label>
                     </div>
 
                     <div class="form-group">
@@ -164,14 +163,19 @@
                 </div>
                 
                 <div class="card analytics-card" id="analyticsCard">
-                    <h2><i class='bx bx-line-chart'></i> Analytics Dashboard</h2>
-                    <div id="insights" class="insights-box"></div>
+                    <h2><i class='bx bx-line-chart'></i> Smart Analytics</h2>
+                    
+                    <div id="insights" class="insights-box" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.05)); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem; margin: 0;">📊 Add transactions to see detailed insights</p>
+                    </div>
                     
                     <div class="charts-grid">
-                        <div class="chart-container">
+                        <div class="chart-container" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+                            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: #fff;"><i class='bx bx-line-chart'></i> Spending Trend</h3>
                             <canvas id="monthlyChart"></canvas>
                         </div>
-                        <div class="chart-container">
+                        <div class="chart-container" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+                            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: #fff;"><i class='bx bx-pie-chart-alt'></i> Category Breakdown</h3>
                             <canvas id="categoryChart"></canvas>
                         </div>
                     </div>
@@ -202,10 +206,26 @@
     </div>
 
     <!-- Receipt Image Modal -->
-    <div id="receiptModal" class="modal-overlay hidden" style="position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index: 1000; display:flex; justify-content:center; align-items:center;">
-        <div style="position: relative; max-width: 90%; max-height: 90%;">
-            <button onclick="closeReceiptModal()" style="position: absolute; top: -40px; right: 0; background:none; border:none; color:white; font-size:2rem; cursor:pointer;">&times;</button>
-            <img id="receiptImage" src="" style="max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+    <div id="receiptModal" class="modal-overlay hidden" style="position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.97); z-index: 1000; display:flex; flex-direction: column; justify-content:center; align-items:center; padding: 0; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(180deg, rgba(0,0,0,0.8), rgba(0,0,0,0.3)); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class='bx bx-receipt' style="color: var(--accent); font-size: 1.5rem;"></i>
+                <h3 style="margin: 0; color: white; font-size: 1.1rem;">Receipt / Bill</h3>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button onclick="zoomReceipt(0.2)" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;" title="Zoom In"><i class='bx bx-plus'></i></button>
+                <button onclick="zoomReceipt(-0.2)" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;" title="Zoom Out"><i class='bx bx-minus'></i></button>
+                <button onclick="resetZoom()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;" title="Reset Zoom"><i class='bx bx-fit'></i> Fit</button>
+                <button onclick="closeReceiptModal()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: var(--danger); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;" title="Close">&times; Close</button>
+            </div>
+        </div>
+        
+        <div id="receiptContainer" style="position: absolute; top: 60px; left: 0; right: 0; bottom: 60px; display: flex; justify-content: center; align-items: center; overflow: auto; background: linear-gradient(135deg, rgba(0,0,0,0.5), rgba(10,10,20,0.7)); padding: 20px;">
+            <img id="receiptImage" src="" style="max-width: 100%; height: auto; max-height: 100%; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); object-fit: contain; transform: scale(1); transition: transform 0.3s ease;" alt="Receipt Image">
+        </div>
+        
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background: linear-gradient(0deg, rgba(0,0,0,0.8), rgba(0,0,0,0.3)); display: flex; justify-content: center; align-items: center; padding: 10px 20px;">
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; text-align: center;"><i class='bx bx-info-circle'></i> Use zoom buttons or scroll to view full receipt. Press ESC or click Close to exit.</p>
         </div>
     </div>
 
