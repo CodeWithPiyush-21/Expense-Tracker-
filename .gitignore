@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+expenses.db
+.env
+venv/
+env/
+static/uploads/
+scratch.py

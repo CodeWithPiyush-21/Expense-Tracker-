@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SpendSmart</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Boxicons for icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .auth-screen {
+            position: relative;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-screen">
+        <div class="auth-card">
+            <h1><i class='bx bx-wallet'></i> SpendSmart</h1>
+            <p>Please login or register to continue.</p>
+            
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password">
+            </div>
+            
+            <div class="auth-buttons">
+                <button onclick="login()" class="btn-primary">Login</button>
+                <button onclick="register()" class="btn-secondary">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function register() {
+            const userVal = document.getElementById('username').value;
+            const passVal = document.getElementById('password').value;
+
+            if (!userVal || !passVal) return alert("Enter username and password");
+
+            const res = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: userVal, password: passVal })
+            });
+            const data = await res.json();
+            alert(data.msg);
+            if(data.success) {
+                login();
+            }
+        }
+
+        async function login() {
+            const userVal = document.getElementById('username').value;
+            const passVal = document.getElementById('password').value;
+
+            if (!userVal || !passVal) return alert("Enter username and password");
+
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: userVal, password: passVal })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = '/dashboard';
+            } else {
+                alert(data.msg);
+            }
+        }
+    </script>
+</body>
+</html>
