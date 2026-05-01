@@ -58,20 +58,24 @@ async function logout() {
 async function loadCategories() {
     try {
         const response = await fetch('/get_categories');
+        if (!response.ok) throw new Error("Backend error");
         categories = await response.json();
-        
-        // Add default categories if empty
-        if(categories.length === 0) {
-            categories = [
-                { id: 'd1', name: "Food & Dining", color: "#3b82f6" },
-                { id: 'd2', name: "Transportation", color: "#10b981" },
-                { id: 'd3', name: "Housing & Utilities", color: "#8b5cf6" },
-                { id: 'd4', name: "Salary / Income", color: "#059669" }
-            ];
-        }
-        
-        updateCategorySelects();
-    } catch(err) { console.error(err); }
+    } catch(err) { 
+        console.error("Categories fetch failed:", err);
+        categories = [];
+    }
+    
+    // Add default categories if empty
+    if(!categories || categories.length === 0) {
+        categories = [
+            { id: 'd1', name: "Food & Dining", color: "#3b82f6" },
+            { id: 'd2', name: "Transportation", color: "#10b981" },
+            { id: 'd3', name: "Housing & Utilities", color: "#8b5cf6" },
+            { id: 'd4', name: "Salary / Income", color: "#059669" }
+        ];
+    }
+    
+    updateCategorySelects();
 }
 
 function updateCategorySelects() {
@@ -472,24 +476,103 @@ function exportToCSV() {
 }
 
 function exportToPDF() {
-    // We will generate a PDF of the Summary Card and List Card.
-    const element = document.getElementById('appScreen');
+    const filteredExpenses = getFilteredExpenses();
     
-    // Quick style adjustments for printing
-    const originalBg = document.body.style.background;
-    document.body.style.background = '#0f172a'; // enforce dark bg
+    if (filteredExpenses.length === 0) {
+        alert("No data to export.");
+        return;
+    }
+
+    let totalInc = 0;
+    let totalExp = 0;
+    filteredExpenses.forEach(exp => {
+        if (exp.type === 'income') totalInc += parseFloat(exp.amount);
+        else totalExp += parseFloat(exp.amount);
+    });
+    const net = totalInc - totalExp;
+    
+    const filterType = document.getElementById('filterType').options[document.getElementById('filterType').selectedIndex].text;
+
+    const printContainer = document.createElement('div');
+    printContainer.style.padding = '40px';
+    printContainer.style.background = '#ffffff';
+    printContainer.style.color = '#000000';
+    printContainer.style.fontFamily = 'Arial, sans-serif';
+    printContainer.style.width = '800px';
+
+    let html = `
+        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">
+            <h1 style="margin: 0; color: #1e293b; font-size: 28px;">SpendSmart Pro</h1>
+            <h2 style="margin: 5px 0 0 0; color: #64748b; font-size: 18px;">Financial Statement (${filterType})</h2>
+            <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 14px;">Generated on: ${new Date().toLocaleDateString()}</p>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+            <div style="padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 30%; text-align: center;">
+                <p style="margin: 0; color: #64748b; font-size: 14px;">Total Income</p>
+                <h3 style="margin: 5px 0 0 0; color: #10b981; font-size: 20px;">₹${totalInc.toLocaleString('en-IN')}</h3>
+            </div>
+            <div style="padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 30%; text-align: center;">
+                <p style="margin: 0; color: #64748b; font-size: 14px;">Total Expenses</p>
+                <h3 style="margin: 5px 0 0 0; color: #ef4444; font-size: 20px;">₹${totalExp.toLocaleString('en-IN')}</h3>
+            </div>
+            <div style="padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; width: 30%; text-align: center;">
+                <p style="margin: 0; color: #64748b; font-size: 14px;">Net Savings</p>
+                <h3 style="margin: 5px 0 0 0; color: #3b82f6; font-size: 20px;">₹${net.toLocaleString('en-IN')}</h3>
+            </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <thead>
+                <tr style="background: #f8fafc; text-align: left;">
+                    <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Date</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Description</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Category</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Type</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155; text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    filteredExpenses.forEach(exp => {
+        let dateStr = exp.date ? new Date(exp.date).toLocaleDateString() : exp.month;
+        let desc = exp.item_name || '-';
+        let amountStr = `₹${parseFloat(exp.amount).toLocaleString('en-IN')}`;
+        let color = exp.type === 'income' ? '#10b981' : '#ef4444';
+        let typeLabel = exp.type === 'income' ? 'Income' : 'Expense';
+
+        html += `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 12px; color: #475569;">${dateStr}</td>
+                <td style="padding: 12px; color: #1e293b; font-weight: bold;">${desc}</td>
+                <td style="padding: 12px; color: #475569;">${exp.category}</td>
+                <td style="padding: 12px; color: ${color}; font-weight: bold;">${typeLabel}</td>
+                <td style="padding: 12px; color: ${color}; text-align: right; font-weight: bold;">${amountStr}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 40px; text-align: center; color: #94a3b8; font-size: 12px;">
+            <p>Generated automatically by SpendSmart Pro.</p>
+        </div>
+    `;
+
+    printContainer.innerHTML = html;
     
     const opt = {
       margin:       0.5,
-      filename:     'SpendSmart_Tax_Report.pdf',
+      filename:     'SpendSmart_Statement.pdf',
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
+      html2canvas:  { scale: 2 },
       jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
-    html2pdf().set(opt).from(element).save().then(() => {
-        document.body.style.background = originalBg;
-    });
+    html2pdf().set(opt).from(printContainer).save();
 }
 
 
